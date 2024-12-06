@@ -1,14 +1,15 @@
 import express from 'express';
 import postsController from '#root/controllers/PostsController.js';
+import { Types } from 'mongoose';
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
-  const ownerID = req.query.ownerID;
+  const userID = req.query.userID;
 
   try {
-    if (ownerID !== undefined && typeof ownerID === 'string') {
-      const posts = await postsController.getAllByOwnerID(ownerID);
+    if (userID !== undefined && typeof userID === 'string') {
+      const posts = await postsController.getAllByUserID(userID as unknown as Types.ObjectId);
       res.status(200).send(posts);
     } else {
       const posts = await postsController.getAll();

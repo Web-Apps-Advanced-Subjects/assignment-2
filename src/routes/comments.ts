@@ -1,5 +1,6 @@
 import express from 'express';
 import commentsController from '#root/controllers/CommentsController.js';
+import { Types } from 'mongoose';
 
 const router = express.Router();
 
@@ -7,8 +8,8 @@ router.get('/', async (req, res) => {
   const postID = req.query.postID;
 
   try {
-    if (postID !== undefined && typeof postID === 'string') {
-      const posts = await commentsController.getAllByPostID(postID);
+    if (postID !== undefined) {
+      const posts = await commentsController.getAllByPostID(postID as unknown as Types.ObjectId);
       res.status(200).send(posts);
     } else {
       const posts = await commentsController.getAll();

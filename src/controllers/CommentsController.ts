@@ -9,8 +9,8 @@ class CommentsController extends BaseController<Comment> {
     super(commentModel);
   }
 
-  async getAllByPostID(postID: Comment['postId']): Promise<CommentModel[]> {
-    return await this.model.find({ ownerID: postID });
+  async getAllByPostID(postID: Comment['postID']): Promise<CommentModel[]> {
+    return await this.model.find({ postID: postID });
   }
 }
 

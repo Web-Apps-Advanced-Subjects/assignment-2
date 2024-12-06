@@ -9,8 +9,8 @@ class PostsController extends BaseController<Post> {
     super(postModel);
   }
 
-  async getAllByOwnerID(ownerID: Post['ownerID']): Promise<PostModel[]> {
-    return await this.model.find({ ownerID: ownerID });
+  async getAllByUserID(userID: Post['userID']): Promise<PostModel[]> {
+    return await this.model.find({ userID: userID });
   }
 }
 
