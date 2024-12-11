@@ -1,7 +1,11 @@
-import { Model } from 'mongoose';
-import type { HydratedDocument } from 'mongoose';
+import { Types } from 'mongoose';
+import type { HydratedDocument, Model } from 'mongoose';
 
-class BaseController<T> {
+type BaseModel = {
+  _id: unknown;
+};
+
+class BaseController<T extends BaseModel> {
   model: Model<T>;
 
   constructor(model: Model<T>) {
@@ -12,16 +16,22 @@ class BaseController<T> {
     return await this.model.find();
   }
 
-  async getById(id: unknown): Promise<HydratedDocument<T> | null> {
+  async findById(id: T['_id']): Promise<HydratedDocument<T> | null> {
     return await this.model.findById(id);
   }
 
-  async create(datum: T): Promise<HydratedDocument<T> | null> {
+  async create(
+    datum: T extends { _id: Types.ObjectId } ? Omit<T, '_id'> : T,
+  ): Promise<HydratedDocument<T> | null> {
     return await this.model.create(datum);
   }
 
-  async delete(id: unknown): Promise<HydratedDocument<T> | null> {
+  async delete(id: T['_id']): Promise<HydratedDocument<T> | null> {
     return await this.model.findByIdAndDelete(id);
+  }
+
+  async update(id: Types.ObjectId, params: Partial<T>) {
+    return await this.model.findByIdAndUpdate(id, params);
   }
 }
 

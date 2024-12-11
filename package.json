@@ -11,33 +11,38 @@
     "#root/*": "./*"
   },
   "scripts": {
-    "dev": "nodemon ./src/app.ts",
-    "start": "tsx src/app.ts",
-    "test": "jest --detectOpenHandles --forceExit --coverage",
-    "lint": "eslint .",
-    "p": "prettier ."
+    "start": "tsx watch src/app.ts",
+    "test": "jest --detectOpenHandles --forceExit --coverage"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.7",
+    "bcrypt": "^5.1.1",
     "body-parser": "^1.20.3",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.8.4"
+    "mongoose": "^8.8.4",
+    "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.16.0",
     "@tsconfig/node-lts": "^22.0.1",
+    "@types/bcrypt": "^5.0.2",
     "@types/body-parser": "^1.19.5",
     "@types/express": "^5.0.0",
+    "@types/multer": "^1.4.12",
     "@types/node": "^22.10.1",
+    "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^8.17.0",
     "@typescript-eslint/parser": "^8.17.0",
+    "cross-env": "^7.0.3",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
     "globals": "^15.13.0",
     "jiti": "^2.4.1",
     "nodemon": "^3.1.7",
     "prettier": "^3.4.2",
+    "supertest": "^7.0.0",
     "ts-node": "^10.9.2",
     "ts-patch": "^3.3.0",
     "tsconfig-paths": "^4.2.0",

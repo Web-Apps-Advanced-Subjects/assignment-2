@@ -1,17 +1,20 @@
-import { Schema, model } from 'mongoose';
+import { Schema, Types, model } from 'mongoose';
 import type { Model, HydratedDocument, QueryWithHelpers } from 'mongoose';
 
-export interface User {
+export type User = {
   username: string;
   password: string;
+  avatar: string;
   email: string;
-}
+  tokens: string[];
+  _id: Types.ObjectId;
+};
 
-interface UserQueryHelpers {
+type UserQueryHelpers = {
   byUsername(
     username: User['username'],
   ): QueryWithHelpers<HydratedDocument<User> | null, HydratedDocument<User>, UserQueryHelpers>;
-}
+};
 
 type UserModelType = Model<User, UserQueryHelpers>;
 
@@ -19,7 +22,9 @@ type UserModelType = Model<User, UserQueryHelpers>;
 const UserSchema = new Schema<User, UserModelType, {}, UserQueryHelpers>({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  avatar: { type: String, required: true },
   email: { type: String, required: true },
+  tokens: { type: [String] },
 });
 
 UserSchema.query.byUsername = function byUsername(

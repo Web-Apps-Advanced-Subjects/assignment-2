@@ -1,18 +1,20 @@
-import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import bodyParser from 'body-parser';
 import express from 'express';
 import type { Express } from 'express';
 
-dotenv.config();
 import postsRouter from '#root/routes/posts.js';
 import commentsRouter from '#root/routes/comments.js';
+import usersRouter from '#root/routes/users.js';
+import likesRouter from '#root/routes/likes.js';
 
 const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/posts', postsRouter);
 app.use('/comments', commentsRouter);
+app.use('/users', usersRouter);
+app.use('/likes', likesRouter);
 
 const db = mongoose.connection;
 db.on('error', (error) => console.log(error));

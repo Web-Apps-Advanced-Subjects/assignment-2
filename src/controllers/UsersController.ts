@@ -1,7 +1,9 @@
+import type { HydratedDocument } from 'mongoose';
+
+import BaseController from './BaseController.js';
+
 import userModel from '#root/models/users.js';
 import type { User } from '#root/models/users.js';
-import type { HydratedDocument } from 'mongoose';
-import BaseController from './BaseController.js';
 
 type UserModel = typeof userModel;
 

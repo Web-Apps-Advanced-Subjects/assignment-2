@@ -1,77 +1,130 @@
 import express from 'express';
-import postsController from '#root/controllers/PostsController.js';
 import { Types } from 'mongoose';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { promisify } from 'util';
 
+import postsController from '#root/controllers/PostsController.js';
+import authenticateMiddleware from '#root/middleware/auth.js';
+import type { Post } from '#root/models/posts.js';
+import commentsController from '#root/controllers/CommentsController.js';
+import likesController from '#root/controllers/LikesController.js';
+
+const asyncUnlink = promisify(fs.unlink);
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'public/media/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); //Appending extension
+  },
+});
+const upload = multer({ storage: storage });
 const router = express.Router();
 
-router.get('/', async (req, res) => {
-  const userID = req.query.userID;
+router.get('/', authenticateMiddleware, async (req, res) => {
+  const userID = req.query.userID as unknown as Types.ObjectId | undefined;
 
-  try {
-    if (userID !== undefined && typeof userID === 'string') {
-      const posts = await postsController.getAllByUserID(userID as unknown as Types.ObjectId);
-      res.status(200).send(posts);
-    } else {
-      const posts = await postsController.getAll();
-      res.status(200).send(posts);
-    }
-  } catch (error) {
-    res.status(400).send(error);
+  if (userID !== undefined) {
+    const posts = await postsController.getAllByUserID(userID);
+
+    res.status(200).send(posts);
+  } else {
+    const posts = await postsController.getAll();
+
+    res.status(200).send(posts);
   }
 });
 
-router.get('/:id', async (req, res) => {
-  const id = req.params.id;
+router.get('/:id', authenticateMiddleware, async (req, res) => {
+  const id = req.params.id as unknown as Types.ObjectId;
+  const post = await postsController.findById(id);
 
-  try {
-    const post = await postsController.getById(id);
-
-    if (post != null) {
-      res.status(200).send(post);
-    } else {
-      res.status(404).send('not found');
-    }
-  } catch (error) {
-    res.status(400).send(error);
+  if (post !== null) {
+    res.status(200).send(post);
+  } else {
+    res.status(404).send('Not Found');
   }
 });
 
-router.post('/', async (req, res) => {
-  const postParams = req.body;
+router.post('/', authenticateMiddleware, upload.single('media'), async (req, res) => {
+  const { title, content } = req.body;
+  // @ts-expect-error "user" was patched to the req object from the auth middleware
+  const userID = req.user._id;
+  const file = req.file;
+
+  if (title === undefined) {
+    if (file !== undefined) {
+      await asyncUnlink(file.path);
+    }
+
+    res.status(400).send('Missing Arguments');
+    return;
+  }
+
+  const media = file?.path.replaceAll(path.sep, path.posix.sep);
 
   try {
-    const post = await postsController.create(postParams);
+    const post = await postsController.create({ title, content, media, userID });
+
     res.status(201).send(post);
-  } catch (error) {
-    res.status(400).send(error);
+  } catch (err) {
+    if (file !== undefined) {
+      await asyncUnlink(file.path);
+    }
+
+    throw err;
   }
 });
 
-router.put('/:id', async (req, res) => {
-  const id = req.params.id;
-  const postParams = req.body;
+router.put('/:id', authenticateMiddleware, upload.single('media'), async (req, res) => {
+  const id = req.params.id as unknown as Types.ObjectId;
+  const { title, content } = req.body;
+  const file = req.file;
+
+  const postParams: Partial<Post> = {};
+
+  if (title !== undefined) {
+    postParams['title'] = title;
+  }
+  if (content !== undefined) {
+    postParams['content'] = content;
+  }
+  if (file !== undefined) {
+    postParams['media'] = file.path.replaceAll(path.sep, path.posix.sep);
+  }
 
   try {
     const post = await postsController.update(id, postParams);
-    res.status(201).send(post);
-  } catch (error) {
-    res.status(400).send(error);
+
+    res.status(200).send(post);
+  } catch (err) {
+    if (file !== undefined) {
+      await asyncUnlink(file.path);
+    }
+
+    throw err;
   }
 });
 
-router.delete('/:id', async (req, res) => {
-  const id = req.params.id;
+router.delete('/:id', authenticateMiddleware, async (req, res) => {
+  const id = req.params.id as unknown as Types.ObjectId;
 
-  try {
-    const post = await postsController.delete(id);
+  const post = await postsController.findById(id);
 
-    if (post != null) {
-      res.status(200).send(post);
-    } else {
-      res.status(404).send('not found');
+  if (post !== null) {
+    await commentsController.deleteByPostID(id);
+    await likesController.deleteByPostID(id);
+    await postsController.delete(id);
+
+    if (post.media !== undefined) {
+      await asyncUnlink(post.media);
     }
-  } catch (error) {
-    res.status(400).send(error);
+
+    res.status(200).send(post);
+  } else {
+    res.status(404).send('Not Found');
   }
 });
 
