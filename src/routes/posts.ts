@@ -5,11 +5,9 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 
-import postsController from '#root/controllers/PostsController.js';
-import authenticateMiddleware from '#root/middleware/auth.js';
-import type { Post } from '#root/models/posts.js';
-import commentsController from '#root/controllers/CommentsController.js';
-import likesController from '#root/controllers/LikesController.js';
+import { postsController, likesController, commentsController } from '../controllers';
+import { authenticate } from '../middleware';
+import { type Post } from '../models';
 
 const asyncUnlink = promisify(fs.unlink);
 const storage = multer.diskStorage({
@@ -20,24 +18,25 @@ const storage = multer.diskStorage({
     cb(null, Date.now() + path.extname(file.originalname)); //Appending extension
   },
 });
+
 const upload = multer({ storage: storage });
 const router = express.Router();
 
-router.get('/', authenticateMiddleware, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   const userID = req.query.userID as unknown as Types.ObjectId | undefined;
 
   if (userID !== undefined) {
     const posts = await postsController.getAllByUserID(userID);
 
-    res.status(200).send(posts);
+    res.status(200).json({posts});
   } else {
     const posts = await postsController.getAll();
 
-    res.status(200).send(posts);
+    res.status(200).json({posts});
   }
 });
 
-router.get('/:id', authenticateMiddleware, async (req, res) => {
+router.get('/:id', authenticate, async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
   const post = await postsController.findById(id);
 
@@ -48,7 +47,7 @@ router.get('/:id', authenticateMiddleware, async (req, res) => {
   }
 });
 
-router.post('/', authenticateMiddleware, upload.single('media'), async (req, res) => {
+router.post('/', authenticate, upload.single('media'), async (req, res) => {
   const { title, content } = req.body;
   // @ts-expect-error "user" was patched to the req object from the auth middleware
   const userID = req.user._id;
@@ -78,7 +77,7 @@ router.post('/', authenticateMiddleware, upload.single('media'), async (req, res
   }
 });
 
-router.put('/:id', authenticateMiddleware, upload.single('media'), async (req, res) => {
+router.put('/:id', authenticate, upload.single('media'), async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
   const { title, content } = req.body;
   const file = req.file;
@@ -108,7 +107,7 @@ router.put('/:id', authenticateMiddleware, upload.single('media'), async (req, r
   }
 });
 
-router.delete('/:id', authenticateMiddleware, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
 
   const post = await postsController.findById(id);

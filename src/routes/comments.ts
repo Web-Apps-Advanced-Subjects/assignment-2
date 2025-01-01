@@ -1,15 +1,15 @@
 import express from 'express';
 import { Types, type HydratedDocument } from 'mongoose';
 
-import commentsController from '#root/controllers/CommentsController.js';
-import authenticateMiddleware from '#root/middleware/auth.js';
-import type { Comment } from '#root/models/comments.js';
+import { commentsController } from '../controllers';
+import { authenticate } from '../middleware';
+import { type Comment } from '../models';
 
 const router = express.Router();
 
-router.get('/', authenticateMiddleware, async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
   const postID = req.query.postID as unknown as Types.ObjectId | undefined;
-  const userID = req.query.postID as unknown as Types.ObjectId | undefined;
+  const userID = req.query.userID as unknown as Types.ObjectId | undefined;
   let comments: HydratedDocument<Comment>[];
 
   if (postID !== undefined) {
@@ -20,10 +20,10 @@ router.get('/', authenticateMiddleware, async (req, res) => {
     comments = await commentsController.getAll();
   }
 
-  res.status(200).send(comments);
+  res.status(200).json({comments});
 });
 
-router.get('/count', authenticateMiddleware, async (req, res) => {
+router.get('/count', authenticate, async (req, res) => {
   const postID = req.query.postID as unknown as Types.ObjectId | undefined;
   const userID = req.query.postID as unknown as Types.ObjectId | undefined;
   let count: number;
@@ -36,13 +36,13 @@ router.get('/count', authenticateMiddleware, async (req, res) => {
   if (postID !== undefined) {
     count = await commentsController.getNumberOfCommentsByPostID(postID);
   } else {
-    count = await commentsController.getNumberOfCommentsByPostID(userID);
+    count = await commentsController.getNumberOfCommentsByUserID(userID);
   }
 
   res.status(200).json({ count });
 });
 
-router.get('/:id', authenticateMiddleware, async (req, res) => {
+router.get('/:id', authenticate, async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
   const post = await commentsController.findById(id);
 
@@ -53,7 +53,7 @@ router.get('/:id', authenticateMiddleware, async (req, res) => {
   }
 });
 
-router.post('/', authenticateMiddleware, async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
   const { content, postID } = req.body;
 
   if (content === undefined || postID === undefined) {
@@ -62,21 +62,27 @@ router.post('/', authenticateMiddleware, async (req, res) => {
   }
 
   // @ts-expect-error "user" was patched to the req object from the auth middleware
-  const post = await commentsController.create({ content, postID, userID: req.user._id });
+  const comment = await commentsController.create({ content, postID, userID: req.user._id });
 
-  res.status(201).send(post);
+  res.status(201).send(comment);
 });
 
-router.put('/:id', authenticateMiddleware, async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
-  const postParams = req.body;
+  const { content } = req.body;
 
-  const post = await commentsController.update(id, postParams);
+  const commentParams: Partial<Comment> = {};
 
-  res.status(200).send(post);
+  if (content !== undefined) {
+    commentParams['content'] = content;
+  }
+
+  const comment = await commentsController.update(id, commentParams);
+
+  res.status(200).send(comment);
 });
 
-router.delete('/:id', authenticateMiddleware, async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   const id = req.params.id as unknown as Types.ObjectId;
 
   const post = await commentsController.delete(id);

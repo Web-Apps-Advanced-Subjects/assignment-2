@@ -1,9 +1,8 @@
 import type { HydratedDocument } from 'mongoose';
 
-import BaseController from './BaseController.js';
+import BaseController from './BaseController';
 
-import postModel from '#root/models/posts.js';
-import type { Post } from '#root/models/posts.js';
+import { postModel, type Post } from '../models';
 
 type PostModel = typeof postModel;
 

@@ -1,10 +1,9 @@
 import type { HydratedDocument } from 'mongoose';
 
-import BaseController from './BaseController.js';
+import BaseController from './BaseController';
 
-import commentModel from '#root/models/comments.js';
-import type { Comment } from '#root/models/comments.js';
-import type { DeleteMany } from '#root/types/mongooseUtils.js';
+import { commentModel, type Comment } from '../models';
+import type { DeleteMany } from '../types';
 
 type CommentModel = typeof commentModel;
 

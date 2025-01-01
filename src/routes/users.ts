@@ -6,9 +6,9 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 
-import usersController from '#root/controllers/UsersController.js';
-import authenticateMiddleware from '#root/middleware/auth.js';
-import type { User } from '#root/models/users.js';
+import { usersController } from '../controllers';
+import { authenticate } from '../middleware';
+import { type User } from '../models';
 
 const asyncUnlink = promisify(fs.unlink);
 const storage = multer.diskStorage({
@@ -99,116 +99,52 @@ router.post('/login', async (req, res) => {
     return;
   }
 
-  const accessToken = jwt.sign({ _id: user._id }, process.env.ACCESS_TOKEN_SECRET as string, {
-    expiresIn: process.env.JWT_TOKEN_EXPIRATION as string,
-  });
-  const refreshToken = jwt.sign({ _id: user._id }, process.env.REFRESH_TOKEN_SECRET as string, {
-    expiresIn: process.env.JWT_TOKEN_EXPIRATION as string,
-  });
-
+  const { accessToken, refreshToken } = usersController.generateTokens(user._id);
   user.tokens.push(refreshToken);
   await user.save();
 
-  res.status(200).send({ accessToken, refreshToken });
-});
-
-router.post('/refresh-token', async (req, res) => {
-  const authHeaders = req.headers['authorization'];
-  const token = authHeaders && authHeaders.split(' ')[1];
-
-  if (token === undefined) {
-    res.sendStatus(401);
-    return;
-  }
-
-  jwt.verify(token, process.env.REFRESH_TOKEN_SECRET as string, async (err, userInfo) => {
-    if (err) {
-      res.sendStatus(403).send(err.message);
-      return;
-    }
-
-    // @ts-expect-error no proper way to type inference to userInfo returned inside the cb
-    const userID = userInfo._id;
-
-    try {
-      const user = await usersController.findById(userID);
-
-      if (user === null) {
-        res.status(403).send('Invalid Request');
-        return;
-      }
-
-      if (!user.tokens.includes(token)) {
-        user.tokens = []; // invalidate user tokens
-        await user.save();
-
-        res.status(403).send('Invalid Request');
-        return;
-      }
-
-      const accessToken = jwt.sign({ _id: user._id }, process.env.ACCESS_TOKEN_SECRET as string, {
-        expiresIn: process.env.JWT_TOKEN_EXPIRATION as string,
-      });
-      const refreshToken = jwt.sign({ _id: user._id }, process.env.REFRESH_TOKEN_SECRET as string, {
-        expiresIn: process.env.JWT_TOKEN_EXPIRATION as string,
-      });
-
-      user.tokens[user.tokens.indexOf(token)] = refreshToken;
-
-      await user.save();
-
-      res.status(200).send({ accessToken, refreshToken });
-    } catch (err) {
-      res.status(500).send(err);
-    }
-  });
+  res.status(200).send({ accessToken, refreshToken, _id: user._id });
 });
 
 router.post('/logout', async (req, res) => {
-  const authHeaders = req.headers['authorization'];
-  const token = authHeaders && authHeaders.split(' ')[1];
+  const { refreshToken } = req.body;
 
-  if (token === undefined) {
+  if (refreshToken === undefined) {
     res.sendStatus(401);
     return;
   }
 
-  jwt.verify(token, process.env.REFRESH_TOKEN_SECRET as string, async (err, userInfo) => {
-    if (err) {
-      res.sendStatus(403).send(err.message);
-      return;
-    }
+  try {
+    const user = await usersController.verifyRefreshToken(refreshToken);
 
-    // @ts-expect-error no proper way to type inference to userInfo returned inside the cb
-    const userID = userInfo._id;
-
-    try {
-      const user = await usersController.findById(userID);
-
-      if (user === null) {
-        res.status(403).send('Invalid Request');
-        return;
-      }
-
-      if (!user.tokens.includes(token)) {
-        user.tokens = []; // invalidate user tokens
-        await user.save();
-
-        res.status(403).send('Invalid Request');
-        return;
-      }
-
-      user.tokens.splice(user.tokens.indexOf(token), 1);
-      await user.save();
-
-      res.sendStatus(200);
-    } catch (err) {
-      res.status(500).send(err);
-    }
-  });
+    res.sendStatus(200);
+  } catch (err) {
+    res.status(403).send('Invalid Request');
+  }
 });
 
-router.put('/', authenticateMiddleware, upload.single('avatar'), async (req, res) => {
+router.post('/refresh-token', async (req, res) => {
+  const { refreshToken: oldRefreshToken } = req.body;
+
+  if (oldRefreshToken === undefined) {
+    res.sendStatus(401);
+    return;
+  }
+
+  try {
+    const user = await usersController.verifyRefreshToken(oldRefreshToken);
+    const { accessToken, refreshToken: newRefreshToken } = usersController.generateTokens(user._id);
+
+    user.tokens.push(newRefreshToken);
+    await user.save();
+
+    res.status(200).send({ accessToken, refreshToken: newRefreshToken, _id: user._id });
+  } catch (err) {
+    res.status(403).send('Invalid Request');
+  }
+});
+
+router.put('/', authenticate, upload.single('avatar'), async (req, res) => {
   const { username } = req.body;
   const file = req.file;
   // @ts-expect-error "user" was patched to the req object from the auth middleware

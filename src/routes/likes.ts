@@ -1,12 +1,12 @@
 import express from 'express';
 import { Types } from 'mongoose';
 
-import likesController from '#root/controllers/LikesController.js';
-import authenticateMiddleware from '#root/middleware/auth.js';
+import { likesController } from '../controllers';
+import { authenticate } from '../middleware';
 
 const router = express.Router();
 
-router.get('/:postID', authenticateMiddleware, async (req, res) => {
+router.get('/:postID', authenticate, async (req, res) => {
   const postID = req.params.postID as unknown as Types.ObjectId;
   // @ts-expect-error "user" was patched to the req object from the auth middleware
   const userID = req.user._id;
@@ -15,7 +15,7 @@ router.get('/:postID', authenticateMiddleware, async (req, res) => {
   res.status(200).json({ liked: like !== null });
 });
 
-router.post('/:postID', authenticateMiddleware, async (req, res) => {
+router.post('/:postID', authenticate, async (req, res) => {
   const postID = req.params.postID as unknown as Types.ObjectId;
   // @ts-expect-error "user" was patched to the req object from the auth middleware
   const userID = req.user._id;
@@ -30,7 +30,7 @@ router.post('/:postID', authenticateMiddleware, async (req, res) => {
   res.status(201).send(like);
 });
 
-router.delete('/:postID', authenticateMiddleware, async (req, res) => {
+router.delete('/:postID', authenticate, async (req, res) => {
   const postID = req.params.postID as unknown as Types.ObjectId;
   // @ts-expect-error "user" was patched to the req object from the auth middleware
   const userID = req.user._id;

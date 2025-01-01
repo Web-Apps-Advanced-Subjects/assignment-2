@@ -1,8 +1,7 @@
-import BaseController from './BaseController.js';
+import BaseController from './BaseController';
 
-import likeModel from '#root/models/likes.js';
-import type { Like } from '#root/models/likes.js';
-import type { DeleteMany } from '#root/types/mongooseUtils.js';
+import { likeModel, type Like } from '../models';
+import type { DeleteMany } from '../types';
 
 type LikeModel = typeof likeModel;
 

@@ -1,12 +1,12 @@
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import mongoose from 'mongoose';
 import bodyParser from 'body-parser';
 import express from 'express';
 import type { Express } from 'express';
 
-import postsRouter from '#root/routes/posts.js';
-import commentsRouter from '#root/routes/comments.js';
-import usersRouter from '#root/routes/users.js';
-import likesRouter from '#root/routes/likes.js';
+import { postsRouter, commentsRouter, usersRouter, likesRouter } from './routes';
 
 const app = express();
 app.use(bodyParser.json());

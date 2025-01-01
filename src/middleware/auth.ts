@@ -6,14 +6,14 @@ const authenticate = async (req: Request, res: Response, next: NextFunction) => 
   const token = authHeaders && authHeaders.split(' ')[1];
 
   if (token === undefined) {
-    res.sendStatus(401);
-    return;
+    let err: Error & { status?: number } = new Error('Missing Token');
+    err.status = 401;
+    return next(err);
   }
 
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET as string, (err, user) => {
+  jwt.verify(token, process.env.TOKEN_SECRET as string, (err, user) => {
     if (err) {
-      res.status(403).send(err.message);
-      return;
+      return next({ ...err, status: 403 });
     }
 
     // @ts-expect-error "patching" user to the req object
