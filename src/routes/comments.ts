@@ -25,10 +25,10 @@ router.get('/', authenticate, async (req, res) => {
 
 router.get('/count', authenticate, async (req, res) => {
   const postID = req.query.postID as unknown as Types.ObjectId | undefined;
-  const userID = req.query.postID as unknown as Types.ObjectId | undefined;
+  const userID = req.query.userID as unknown as Types.ObjectId | undefined;
   let count: number;
 
-  if (postID === undefined || userID === undefined) {
+  if (postID === undefined && userID === undefined) {
     res.status(400).send('Missing Arguments');
     return;
   }
@@ -36,6 +36,7 @@ router.get('/count', authenticate, async (req, res) => {
   if (postID !== undefined) {
     count = await commentsController.getNumberOfCommentsByPostID(postID);
   } else {
+    // @ts-expect-error ts cannot narrow down that userID has to be undefined at this point
     count = await commentsController.getNumberOfCommentsByUserID(userID);
   }
 

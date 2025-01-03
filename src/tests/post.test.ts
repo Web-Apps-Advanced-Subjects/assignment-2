@@ -203,6 +203,26 @@ describe('Post Tests', () => {
     expect(response.statusCode).toBe(401);
   });
 
+  test('Post test fail get post by id no such id', async () => {
+    let response = await request(app)
+      .post(baseUrl)
+      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .field('title', testPost.title)
+      .field('content', testPost.content)
+      .attach('media', testPost.media);
+
+    let { _id } = response.body;
+
+    await request(app)
+      .delete(`${baseUrl}/${_id}`)
+      .set({ authorization: 'JWT ' + testUser.refreshToken });
+
+    response = await request(app)
+      .get(`${baseUrl}/${_id}`)
+      .set({ authorization: 'JWT ' + testUser.refreshToken });
+    expect(response.statusCode).toBe(404);
+  });
+
   test('Post test get post by id', async () => {
     let response = await request(app)
       .post(baseUrl)

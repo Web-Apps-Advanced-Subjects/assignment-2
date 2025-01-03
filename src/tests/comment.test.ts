@@ -28,14 +28,17 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  await request(app)
+  let response = await request(app)
     .post('/users/register')
     .field('username', testUser.username)
     .field('email', testUser.email)
     .field('password', testUser.password)
     .attach('avatar', testUser.avatar);
 
-  let response = await request(app)
+  const { _id: userID } = response.body;
+  testUser._id = userID;
+
+  response = await request(app)
     .post('/users/login')
     .send({ username: testUser.username, password: testUser.password });
 
@@ -49,8 +52,8 @@ beforeEach(async () => {
     .field('title', testPost.title)
     .field('content', testPost.content)
     .attach('media', testPost.media);
-  const { _id } = response.body;
-  testPost._id = _id;
+  const { _id: postID } = response.body;
+  testPost._id = postID;
 });
 
 afterEach(async () => {
@@ -75,13 +78,14 @@ afterAll((done) => {
 });
 
 const baseUrl = '/comments';
-const testUser: Omit<User, '_id' | 'tokens'> & { refreshToken: string; accessToken: string } = {
+const testUser: Omit<User, 'tokens'> & { refreshToken: string; accessToken: string } = {
   username: 'TestUser',
   email: 'test@user.com',
   password: 'testPassword',
   avatar: 'src/tests/fixtures/profile-picture.png',
   refreshToken: '',
   accessToken: '',
+  _id: '' as unknown as Types.ObjectId,
 };
 const testPost: Required<Pick<Post, 'content' | 'media'>> & Omit<Post, 'userID'> = {
   title: 'TestPost',
@@ -228,6 +232,24 @@ describe('Comment Tests', () => {
     expect(response.statusCode).toBe(401);
   });
 
+  test('Comment test fail get comment by id no such id', async () => {
+    let response = await request(app)
+      .post(baseUrl)
+      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .send({ content: testComment.content, postID: testPost._id });
+
+    let { _id } = response.body;
+
+    response = await request(app)
+      .delete(`${baseUrl}/${_id}`)
+      .set({ authorization: 'JWT ' + testUser.refreshToken });
+
+    response = await request(app)
+      .get(`${baseUrl}/${_id}`)
+      .set({ authorization: 'JWT ' + testUser.refreshToken });
+    expect(response.statusCode).toBe(404);
+  });
+
   test('Comment test get comment by id', async () => {
     let response = await request(app)
       .post(baseUrl)
@@ -292,6 +314,25 @@ describe('Comment Tests', () => {
     expect(response.statusCode).toBe(401);
   });
 
+  test('Comment test fail delete comment no such id', async () => {
+    let response = await request(app)
+      .post(baseUrl)
+      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .send({ content: testComment.content, postID: testPost._id });
+
+    let { _id } = response.body;
+
+    await request(app)
+      .delete(`${baseUrl}/${_id}`)
+      .set({ authorization: 'JWT ' + testUser.refreshToken });
+
+    response = await request(app)
+      .delete(`${baseUrl}/${_id}`)
+      .set({ authorization: 'JWT ' + testUser.refreshToken });
+
+    expect(response.statusCode).toBe(404);
+  });
+
   test('Comment test delete comment', async () => {
     let response = await request(app)
       .post(baseUrl)
@@ -310,5 +351,57 @@ describe('Comment Tests', () => {
       .get(baseUrl)
       .set({ authorization: 'JWT ' + testUser.refreshToken });
     expect(response.body.comments.length).toBe(0);
+  });
+
+  test('Comment test fail get comment count no auth', async () => {
+    let response = await request(app)
+      .post(baseUrl)
+      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .send({ content: testComment.content, postID: testPost._id });
+
+    response = await request(app).get(`${baseUrl}/count`);
+
+    expect(response.statusCode).toBe(401);
+  });
+
+  test('Comment test fail get comment count missing args', async () => {
+    let response = await request(app)
+      .post(baseUrl)
+      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .send({ content: testComment.content, postID: testPost._id });
+
+    response = await request(app)
+      .get(`${baseUrl}/count`)
+      .set({ authorization: 'JWT ' + testUser.refreshToken });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  test('Comment test get comment count by postID', async () => {
+    let response = await request(app)
+      .post(baseUrl)
+      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .send({ content: testComment.content, postID: testPost._id });
+
+    response = await request(app)
+      .get(`${baseUrl}/count?postID=${testPost._id}`)
+      .set({ authorization: 'JWT ' + testUser.refreshToken });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.count).toBe(1);
+  });
+
+  test('Comment test get comment count by userID', async () => {
+    let response = await request(app)
+      .post(baseUrl)
+      .set({ authorization: 'JWT ' + testUser.refreshToken })
+      .send({ content: testComment.content, postID: testPost._id });
+
+    response = await request(app)
+      .get(`${baseUrl}/count?userID=${testUser._id}`)
+      .set({ authorization: 'JWT ' + testUser.refreshToken });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.count).toBe(1);
   });
 });

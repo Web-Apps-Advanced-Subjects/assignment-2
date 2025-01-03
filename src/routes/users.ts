@@ -22,6 +22,135 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 const router = express.Router();
 
+/**
+ * @swagger
+ * tags:
+ *   name: User
+ *   description: The Users API
+ */
+
+/**
+ * @swagger
+ * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     BaseUser:
+ *       type: object
+ *       required:
+ *         - username
+ *         - password
+ *       properties:
+ *         username:
+ *           type: string
+ *           description: The user username
+ *         password:
+ *           type: string
+ *           description: The user password
+ *       example:
+ *         username: 'bob'
+ *         password: 'pass'
+ *     RegisterUser:
+ *       allOf:
+ *       - $ref: '#/components/schemas/BaseUser'
+ *       - type: object
+ *         required:
+ *           - email
+ *           - avatar
+ *         properties:
+ *           email:
+ *             type: string
+ *             description: The user email
+ *           avatar:
+ *             type: string
+ *             format: binary
+ *             description: The user avatar picture
+ *         example:
+ *           email: 'bob@gmail.com'
+ *           avatar: 123.png
+ *     DBUser:
+ *       allOf:
+ *       - $ref: '#/components/schemas/RegisterUser'
+ *       - $ref: '#/components/schemas/UserID'
+ *       - type: object
+ *         required:
+ *           - _id
+ *           - tokens
+ *         properties:
+ *           _id:
+ *             type: string
+ *             description: The user id
+ *           tokens:
+ *             type: array
+ *             items:
+ *               type: string
+ *             description: The user access tokens
+ *         example:
+ *           _id: '6777cbe51ead7054a6a78d74'
+ *           tokens: ['eyJfaWQiOiI2Nzc3Y2JlNTFlYWQ3MDU0YTZh']
+ *     UserID:
+ *       type: object
+ *       required:
+ *         - _id
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: The user id
+ *       example:
+ *         _id: '6777cbe51ead7054a6a78d74'
+ *     RefreshToken:
+ *       type: object
+ *       required:
+ *         - refreshToken
+ *       properties:
+ *         refreshToken:
+ *           type: string
+ *           description: The user generated refresh token
+ *       example:
+ *         refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'
+ */
+
+/**
+ * @swagger
+ * /users/register:
+ *   post:
+ *     summary: registers a new user
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/RegisterUser'
+ *     responses:
+ *       201:
+ *         description: The new user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DBUser'
+ *       400:
+ *         description: Missing arguments/Bad avatar file format
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       409:
+ *         description: Username taken
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
+
 router.post('/register', upload.single('avatar'), async (req, res) => {
   const { username, password, email } = req.body;
   const file = req.file;
@@ -77,6 +206,50 @@ router.post('/register', upload.single('avatar'), async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /users/login:
+ *   post:
+ *     summary: login to existing user
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/BaseUser'
+ *     responses:
+ *       200:
+ *         description: User session credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *               - $ref: '#/components/schemas/UserID'
+ *               - $ref: '#/components/schemas/RefreshToken'
+ *               - type: object
+ *                 required:
+ *                   - accessToken
+ *                 properties:
+ *                   accessToken:
+ *                     type: string
+ *                     description: The user generated access token
+ *                 example:
+ *                   accessToken: 'eyJfaWQiOiI2Nzc3Y2JlNTFlYWQ3MDU0YTZh'
+ *       400:
+ *         description: Missing arguments
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       401:
+ *         description: Authentication failed
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
+
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
@@ -106,11 +279,40 @@ router.post('/login', async (req, res) => {
   res.status(200).send({ accessToken, refreshToken, _id: user._id });
 });
 
+/**
+ * @swagger
+ * /users/logout:
+ *   post:
+ *     summary: logout of user account
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RefreshToken'
+ *     responses:
+ *       200:
+ *         description: Successfully logged out of session
+ *       400:
+ *         description: Missing arguments
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       403:
+ *         description: Authentication failed
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
+
 router.post('/logout', async (req, res) => {
   const { refreshToken } = req.body;
 
   if (refreshToken === undefined) {
-    res.sendStatus(401);
+    res.sendStatus(400);
     return;
   }
 
@@ -123,11 +325,55 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /users/refresh-token:
+ *   post:
+ *     summary: refresh user refreshToken
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RefreshToken'
+ *     responses:
+ *       200:
+ *         description: User session credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *               - $ref: '#/components/schemas/UserID'
+ *               - $ref: '#/components/schemas/RefreshToken'
+ *               - type: object
+ *                 required:
+ *                   - accessToken
+ *                 properties:
+ *                   accessToken:
+ *                     type: string
+ *                     description: The user generated access token
+ *                 example:
+ *                   accessToken: 'eyJfaWQiOiI2Nzc3Y2JlNTFlYWQ3MDU0YTZh'
+ *       400:
+ *         description: Missing arguments
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       403:
+ *         description: Authentication failed
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
+
 router.post('/refresh-token', async (req, res) => {
   const { refreshToken: oldRefreshToken } = req.body;
 
   if (oldRefreshToken === undefined) {
-    res.sendStatus(401);
+    res.sendStatus(400);
     return;
   }
 
@@ -144,6 +390,49 @@ router.post('/refresh-token', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /users:
+ *   put:
+ *     summary: Update user username and/or avatar
+ *     tags: [User]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 description: New username
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *                 description: New avatar
+ *     responses:
+ *       200:
+ *         description: User session credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DBUser'
+ *       400:
+ *         description: Missing arguments
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       409:
+ *         description: Username taken
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ */
+
 router.put('/', authenticate, upload.single('avatar'), async (req, res) => {
   const { username } = req.body;
   const file = req.file;
@@ -157,6 +446,13 @@ router.put('/', authenticate, upload.single('avatar'), async (req, res) => {
   }
 
   if (username !== undefined) {
+    let userCheck = await usersController.findOneByUsername(username);
+
+    if (userCheck !== null) {
+      res.status(409).send('Username Taken');
+      return;
+    }
+
     params['username'] = username;
   }
 
