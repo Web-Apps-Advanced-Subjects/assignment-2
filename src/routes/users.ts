@@ -25,7 +25,7 @@ const router = express.Router();
 /**
  * @swagger
  * tags:
- *   name: User
+ *   name: Users
  *   description: The Users API
  */
 
@@ -45,9 +45,6 @@ const router = express.Router();
  *   schemas:
  *     BaseUser:
  *       type: object
- *       required:
- *         - username
- *         - password
  *       properties:
  *         username:
  *           type: string
@@ -58,27 +55,34 @@ const router = express.Router();
  *       example:
  *         username: 'bob'
  *         password: 'pass'
- *     RegisterUser:
+ *     BaseRestUser:
+ *       type: object
+ *       properties:
+ *         email:
+ *           type: string
+ *           description: The user email
+ *         avatar:
+ *           type: string
+ *           format: binary
+ *           description: The user avatar picture
+ *       example:
+ *         email: 'bob@gmail.com'
+ *         avatar: 123.png
+ *     PartialUser:
  *       allOf:
  *       - $ref: '#/components/schemas/BaseUser'
- *       - type: object
- *         required:
- *           - email
- *           - avatar
- *         properties:
- *           email:
- *             type: string
- *             description: The user email
- *           avatar:
- *             type: string
- *             format: binary
- *             description: The user avatar picture
- *         example:
- *           email: 'bob@gmail.com'
- *           avatar: 123.png
+ *       - $ref: '#/components/schemas/BaseRestUser'
+ *     User:
+ *       allOf:
+ *       - $ref: '#/components/schemas/PartialUser'
+ *       required:
+ *         - username
+ *         - password
+ *         - email
+ *         - avatar
  *     DBUser:
  *       allOf:
- *       - $ref: '#/components/schemas/RegisterUser'
+ *       - $ref: '#/components/schemas/User'
  *       - $ref: '#/components/schemas/UserID'
  *       - type: object
  *         required:
@@ -92,7 +96,7 @@ const router = express.Router();
  *             type: array
  *             items:
  *               type: string
- *             description: The user access tokens
+ *               description: The user access tokens
  *         example:
  *           _id: '6777cbe51ead7054a6a78d74'
  *           tokens: ['eyJfaWQiOiI2Nzc3Y2JlNTFlYWQ3MDU0YTZh']
@@ -123,13 +127,13 @@ const router = express.Router();
  * /users/register:
  *   post:
  *     summary: registers a new user
- *     tags: [User]
+ *     tags: [Users]
  *     requestBody:
  *       required: true
  *       content:
  *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/RegisterUser'
+ *             $ref: '#/components/schemas/User'
  *     responses:
  *       201:
  *         description: The new user
@@ -211,7 +215,7 @@ router.post('/register', upload.single('avatar'), async (req, res) => {
  * /users/login:
  *   post:
  *     summary: login to existing user
- *     tags: [User]
+ *     tags: [Users]
  *     requestBody:
  *       required: true
  *       content:
@@ -284,7 +288,7 @@ router.post('/login', async (req, res) => {
  * /users/logout:
  *   post:
  *     summary: logout of user account
- *     tags: [User]
+ *     tags: [Users]
  *     requestBody:
  *       required: true
  *       content:
@@ -330,7 +334,7 @@ router.post('/logout', async (req, res) => {
  * /users/refresh-token:
  *   post:
  *     summary: refresh user refreshToken
- *     tags: [User]
+ *     tags: [Users]
  *     requestBody:
  *       required: true
  *       content:
@@ -395,7 +399,7 @@ router.post('/refresh-token', async (req, res) => {
  * /users:
  *   put:
  *     summary: Update user username and/or avatar
- *     tags: [User]
+ *     tags: [Users]
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -421,6 +425,12 @@ router.post('/refresh-token', async (req, res) => {
  *               $ref: '#/components/schemas/DBUser'
  *       400:
  *         description: Missing arguments
+ *         content:
+ *           text/plain:
+ *             schema:
+ *               type: string
+ *       401:
+ *         description: Not authenticated
  *         content:
  *           text/plain:
  *             schema:
