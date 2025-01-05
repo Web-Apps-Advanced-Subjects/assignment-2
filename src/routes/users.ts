@@ -470,9 +470,23 @@ router.put('/', authenticate, upload.single('avatar'), async (req, res) => {
     params['avatar'] = file.path.replaceAll(path.sep, path.posix.sep);
   }
 
-  const user = await usersController.update(userID, params);
+  const oldUser = await usersController.findById(userID);
 
-  res.status(200).send(user);
+  try {
+    const user = await usersController.update(userID, params);
+
+    if (file !== undefined && oldUser !== null) {
+      await asyncUnlink(oldUser.avatar);
+    }
+
+    res.status(200).send(user);
+  } catch (err) {
+    if (file !== undefined) {
+      await asyncUnlink(file.path);
+    }
+
+    throw err;
+  }
 });
 
 export default router;

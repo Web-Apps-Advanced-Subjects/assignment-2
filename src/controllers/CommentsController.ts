@@ -21,12 +21,30 @@ class CommentsController extends BaseController<Comment> {
     return await this.model.find().byUserID(userID);
   }
 
-  async getNumberOfCommentsByPostID(postID: Comment['postID']): Promise<number> {
+  async getAllByUserIDAndPostID(
+    userID: Comment['userID'],
+    postID: Comment['postID'],
+  ): Promise<HydratedDocument<Comment>[]> {
+    return await this.model.find().byUserID(userID).byPostID(postID);
+  }
+
+  async getNumberOfComments(): Promise<number> {
+    return await this.model.countDocuments();
+  }
+
+  async getCountByPostID(postID: Comment['postID']): Promise<number> {
     return await this.model.find().byPostID(postID).countDocuments();
   }
 
-  async getNumberOfCommentsByUserID(userID: Comment['userID']): Promise<number> {
+  async getCountByUserID(userID: Comment['userID']): Promise<number> {
     return await this.model.find().byUserID(userID).countDocuments();
+  }
+
+  async getCountByUserIDAndPostID(
+    userID: Comment['userID'],
+    postID: Comment['postID'],
+  ): Promise<number> {
+    return await this.model.find().byUserID(userID).byPostID(postID).countDocuments();
   }
 
   async deleteByPostID(postID: Comment['postID']): Promise<DeleteMany> {

@@ -31,7 +31,7 @@ const options = {
   apis: ['./src/routes/*.ts'],
 };
 const specs = swaggerJsDoc(options);
-app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(specs));
+app.use('/docs', swaggerUI.serve, swaggerUI.setup(specs));
 
 const db = mongoose.connection;
 db.on('error', (error) => console.log(error));

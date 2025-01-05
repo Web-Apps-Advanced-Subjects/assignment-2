@@ -4,7 +4,6 @@
   "description": "",
   "license": "MIT",
   "author": "Idan Bridza <bidan2014@gmail.com>",
-  "main": "app.js",
   "repository": "github:Web-Apps-Advanced-Subjects/assignment-2",
   "scripts": {
     "start-local-server": "mongod --port 27017 --dbpath C:\\MongoDB\\data\\db",

@@ -364,19 +364,6 @@ describe('Comment Tests', () => {
     expect(response.statusCode).toBe(401);
   });
 
-  test('Comment test fail get comment count missing args', async () => {
-    let response = await request(app)
-      .post(baseUrl)
-      .set({ authorization: 'JWT ' + testUser.refreshToken })
-      .send({ content: testComment.content, postID: testPost._id });
-
-    response = await request(app)
-      .get(`${baseUrl}/count`)
-      .set({ authorization: 'JWT ' + testUser.refreshToken });
-
-    expect(response.statusCode).toBe(400);
-  });
-
   test('Comment test get comment count by postID', async () => {
     let response = await request(app)
       .post(baseUrl)

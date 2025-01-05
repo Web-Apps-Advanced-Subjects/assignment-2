@@ -5,7 +5,7 @@ import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
 
-import { postsController, likesController, commentsController } from '../controllers';
+import { postsController } from '../controllers';
 import { authenticate } from '../middleware';
 import { type Post } from '../models';
 
@@ -97,6 +97,14 @@ const router = express.Router();
  *         name: userID
  *         type: string
  *         description: The userID to filter by if needed
+ *       - in: query
+ *         name: limit
+ *         type: number
+ *         description: Limit the amount of results returned back from the server
+ *       - in: query
+ *         name: lastID
+ *         type: string
+ *         description: An offset like post id to start the query from (not included)
  *     responses:
  *       200:
  *         description: the wanted posts
@@ -106,12 +114,6 @@ const router = express.Router();
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/DBPost'
- *       400:
- *         description: Missing arguments
- *         content:
- *           text/plain:
- *             schema:
- *               type: string
  *       401:
  *         description: Not authenticated
  *         content:
@@ -122,13 +124,15 @@ const router = express.Router();
 
 router.get('/', authenticate, async (req, res) => {
   const userID = req.query.userID as unknown as Types.ObjectId | undefined;
+  const limit = req.query.limit as unknown as number | undefined;
+  const lastID = req.query.lastID as unknown as Types.ObjectId | undefined;
 
   if (userID !== undefined) {
-    const posts = await postsController.getAllByUserID(userID);
+    const posts = await postsController.getAllByUserID(userID, { limit, lastID });
 
     res.status(200).json({ posts });
   } else {
-    const posts = await postsController.getAll();
+    const posts = await postsController.getAll({ limit, lastID });
 
     res.status(200).json({ posts });
   }
@@ -182,10 +186,12 @@ router.get('/:id', authenticate, async (req, res) => {
 
 /**
  * @swagger
- * /post:
+ * /posts:
  *   post:
- *     summary: Create new post
+ *     summary: Update post
  *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -256,10 +262,12 @@ router.post('/', authenticate, upload.single('media'), async (req, res) => {
 
 /**
  * @swagger
- * /post/{id}:
+ * /posts/{id}:
  *   put:
  *     summary: Create new post
  *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -317,8 +325,14 @@ router.put('/:id', authenticate, upload.single('media'), async (req, res) => {
     postParams['media'] = file.path.replaceAll(path.sep, path.posix.sep);
   }
 
+  const oldPost = await postsController.findById(id);
+
   try {
     const post = await postsController.update(id, postParams);
+
+    if (file !== undefined && oldPost?.media !== undefined) {
+      await asyncUnlink(oldPost.media);
+    }
 
     res.status(200).send(post);
   } catch (err) {
@@ -332,10 +346,12 @@ router.put('/:id', authenticate, upload.single('media'), async (req, res) => {
 
 /**
  * @swagger
- * /post/{id}:
+ * /posts/{id}:
  *   delete:
  *     summary: Delete post by id and all associated comments and likes
  *     tags: [Posts]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -369,8 +385,6 @@ router.delete('/:id', authenticate, async (req, res) => {
   const post = await postsController.findById(id);
 
   if (post !== null) {
-    await commentsController.deleteByPostID(id);
-    await likesController.deleteByPostID(id);
     await postsController.delete(id);
 
     if (post.media !== undefined) {
